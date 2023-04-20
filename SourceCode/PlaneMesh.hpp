@@ -36,9 +36,14 @@ class PlaneMesh {
 
 	float min, max;
 
+	GLuint VAO;
+	
 	GLuint vertexbuffer, elementbuffer;
 	GLuint TextureID, DispID;
 	GLuint ProgramID;
+
+	// Cached uniform locations specifcally for the draw method
+	GLuint MatrixID, ViewMatrixID, ModelMatrixID, LightID, timeID;
 
 
 	/**
@@ -56,8 +61,6 @@ class PlaneMesh {
 		// So, one "row" of the mesh's vertices have a fixed x and increasing z
 
 		//manually create a first column of vertices
-		float x = min;
-		float y = 0;
         int nCols = (max - min) / stepsize + 1;
 
         for (float x = min; x <= max; x += stepsize) {
@@ -158,16 +161,34 @@ public:
 
 		glUseProgram(0);
 
+		// Cache uniform locations
+		MatrixID = glGetUniformLocation(ProgramID, "MVP");
+		ViewMatrixID = glGetUniformLocation(ProgramID, "V");
+		ModelMatrixID = glGetUniformLocation(ProgramID, "M");
+		LightID = glGetUniformLocation(ProgramID, "LightPosition_worldspace");
+		timeID = glGetUniformLocation(ProgramID, "time");
+
 		// Generate buffers
 		glGenBuffers(1, &vertexbuffer);
 		glGenBuffers(1, &elementbuffer);
+
+		// Generate and bind VAO
+		glGenVertexArrays(1, &VAO);
+		glBindVertexArray(VAO);
 
 		// Fill buffers
 		glBindBuffer(GL_ARRAY_BUFFER, vertexbuffer);
 		glBufferData(GL_ARRAY_BUFFER, verts.size() * sizeof(float), &verts[0], GL_STATIC_DRAW);
 
+		// Index buffer
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, elementbuffer);
 		glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(int), &indices[0], GL_STATIC_DRAW);
+
+		// Set up vertex attribute pointers
+		glEnableVertexAttribArray(0);
+		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
+
+		glBindVertexArray(0);
 	}
 
 
@@ -186,28 +207,11 @@ public:
 		glm::mat4 MVP = P * V * M;
 
 		// Set new uniforms
-		GLuint MatrixID = glGetUniformLocation(ProgramID, "MVP");
 		glUniformMatrix4fv(MatrixID, 1, GL_FALSE, &MVP[0][0]);
-
-		GLuint ViewMatrixID = glGetUniformLocation(ProgramID, "V");
 		glUniformMatrix4fv(ViewMatrixID, 1, GL_FALSE, &V[0][0]);
-		
-		GLuint ModelMatrixID = glGetUniformLocation(ProgramID, "M");
 		glUniformMatrix4fv(ModelMatrixID, 1, GL_FALSE, &M[0][0]);
-
-		GLuint LightID = glGetUniformLocation(ProgramID, "LightPosition_worldspace");
 		glUniform3f(LightID, lightPos.x, lightPos.y, lightPos.z);
-		
-		GLuint timeID = glGetUniformLocation(ProgramID, "time");
 		glUniform1f(timeID, glfwGetTime());
-
-		// 1st attribute buffer : vertices
-		glEnableVertexAttribArray(0);
-		glBindBuffer(GL_ARRAY_BUFFER, vertexbuffer);
-		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
-
-		// Index buffer
-		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, elementbuffer);
 
 		// Activate textures
 		glActiveTexture(GL_TEXTURE0);
@@ -215,11 +219,13 @@ public:
 		glActiveTexture(GL_TEXTURE1);
 		glBindTexture(GL_TEXTURE_2D, DispID);
 
-		// Set the patch size
-		glPatchParameteri(GL_PATCH_VERTICES, 4);
+		glBindVertexArray(VAO);
 
-		// Draw the patches
+		// Set patch size to 4 and draw the vertices
+		glPatchParameteri(GL_PATCH_VERTICES, 4);
 		glDrawElements(GL_PATCHES, indices.size(), GL_UNSIGNED_INT, (void*)0);
+
+		glBindVertexArray(0);
 
 		// Deactivate textures
 		glActiveTexture(GL_TEXTURE0);

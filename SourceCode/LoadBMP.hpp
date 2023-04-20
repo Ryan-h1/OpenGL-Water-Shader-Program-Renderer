@@ -77,7 +77,7 @@ void loadBMP(const char* imagepath, unsigned char** data, unsigned int* width, u
     *data = new unsigned char [imageSize];
 
     // Read the actual data from the file into the buffer
-    fread(*data,1,imageSize,file);
+    (void)!fread(*data,1,imageSize,file);
 
     fprintf(stderr, "Done reading!\n");
 

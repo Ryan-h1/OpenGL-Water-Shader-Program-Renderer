@@ -65,7 +65,7 @@ void cameraThirdPerson(glm::mat4& M, glm::mat4& V) {
     V = glm::lookAt(pos+curOffset, pos, up);
 }
 
-void cameraFirstPerson(glm::mat4& V, float start) {
+void cameraFirstPerson(glm::mat4& V) {
     glm::vec3 eye = {0, 1, 5};
 
     static GLfloat theta = glm::radians(-90.0f);
